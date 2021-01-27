@@ -48,7 +48,13 @@ def main():
         dest="modified_pdf",
         action="store_true",
         help="Create a '*_remarks-only.pdf' file with all annotated pages",
-    )    
+    )
+    parser.add_argument(
+        "--combined_md",
+        dest="combined_md",
+        action="store_true",
+        help="Create a single '*.md' file containing all highlighted text",
+    )
     parser.add_argument(
         "-v",
         "--version",

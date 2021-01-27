@@ -1,4 +1,5 @@
-from itertools import groupby
+from itertools import groupby, chain
+import re
 
 import fitz
 
@@ -17,16 +18,16 @@ def get_highlight_rects(page):
 def get_page_words(page):
     # https://pymupdf.readthedocs.io/en/latest/app2.html#text-extraction-flags-defaults
     # https://github.com/pymupdf/PyMuPDF/issues/363
-    words = page.getText("words", flags=(1 + 2 + 8))
+    words = page.getText("words", flags=(2))
 
-    words.sort(key=lambda w: (w[3], w[0]))  # ascending y, then x coordinate
+    #  words.sort(key=lambda w: (w[3], w[0]))  # ascending y, then x coordinate
     # print(words)
 
     return words
 
 
 def get_page_blocks(page):
-    blocks = page.getText("blocks", flags=(1 + 2 + 8))
+    blocks = page.getText("blocks", flags=(1 + 2))
 
     # print(blocks)
     txt_blocks = [b[4] for b in blocks]
@@ -58,14 +59,14 @@ def is_text_extractable(page):
     # https://github.com/adobe-type-tools/cmap-resources/blob/master/Adobe-Identity-0/CMap/Identity-H
     # https://github.com/adobe-type-tools/perl-scripts/blob/master/cmap-tool.pl
 
-    if b"\xef\xbf\xbd" in text_encoded:  # �, likely a page with an obsfucated font
-        return False
+    #  if b"\xef\xbf\xbd" in text_encoded:  # �, likely a page with an obsfucated font
+    #      return False
         # raise ValueError(f"Found an unmapped character: �. Something might be off with a PDF font. Check out `page.getFontList(full=True)`")
 
     return True
 
 
-def extract_highlighted_words(page):
+def extract_highlighted_text(page):
     # main refs:
     # - https://pymupdf.readthedocs.io/en/latest/app2.html Appendix 2: Details on Text Extraction
     # - https://pymupdf.readthedocs.io/en/latest/faq.html#how-to-extract-text-from-within-a-rectangle
@@ -77,55 +78,80 @@ def extract_highlighted_words(page):
     words = get_page_words(page)
     highlight_rects = get_highlight_rects(page)
 
+    highlight_mask = [any([fitz.Rect(w[:4]).intersects(rect)
+                           for rect in highlight_rects])
+                      for w in words]
+
+    new_group = True
+    current_group = []
     highlighted_groups = []
+    for word, highlighted in zip(words, highlight_mask):
+        if highlighted:
+            current_group.append(word[4])
+            new_group = False
+        else:
+            if len(current_group) > 0:
+                # Combine words
+                current_group = ' '.join(current_group)
+                # Join words split over two lines
+                current_group = current_group.replace('- ', '')
+                highlighted_groups.append('- ' + current_group)
+                current_group = []
+            new_group = True
 
-    for rect in highlight_rects:
-        highlighted_words = [w for w in words if fitz.Rect(w[:4]).intersects(rect)]
-        # print("highlighted_words", highlighted_words)
-
-        same_y1_group = groupby(highlighted_words, key=lambda w: w[3])
-
-        for y1, gwords in same_y1_group:
-            highlighted_groups.append(" ".join(w[4] for w in gwords))
-
-    # print("highlighted_groups", highlighted_groups)
-
-    return highlighted_groups
+    return '\n'.join(highlighted_groups)
 
 
 def md_from_blocks(page):
     highlighted_groups = extract_highlighted_words(page)
 
-    if len(highlighted_groups) == 0:
-        return ""
+    #  if len(highlighted_groups) == 0:
+    #      return ""
 
-    txt_blocks = get_page_blocks(page)
-    # print("txt_blocks", txt_blocks)
+    #  txt_blocks = get_page_blocks(page)
 
-    # TODO: for malformed PDFs it might be necessary to use the script below
-    # https://pymupdf.readthedocs.io/en/latest/faq.html#how-to-extract-text-in-natural-reading-order
+    #  # todo: for malformed pdfs it might be necessary to use the script below
+    #  # https://pymupdf.readthedocs.io/en/latest/faq.html#how-to-extract-text-in-natural-reading-order
 
-    out_blocks = []
+    #  out_blocks = []
 
-    # Loops with the simplest logic ever!
-    for txt_block in txt_blocks:
+    #  # loops with the simplest logic ever!
+    #  for txt_block in txt_blocks:
 
-        # Getting rid of \n \t double/triple/multiple spaces inside a block
-        # https://stackoverflow.com/questions/1546226/is-there-a-simple-way-to-remove-multiple-spaces-in-a-string
-        block = " ".join(txt_block.split())
+    #      # Getting rid of \n \t double/triple/multiple spaces inside a block
+    #      # https://stackoverflow.com/questions/1546226/is-there-a-simple-way-to-remove-multiple-spaces-in-a-string
+    #      block = " ".join(txt_block.split())
 
-        append = False
+    #      append = False
 
-        for group in highlighted_groups:
-            if group in block:
-                block = block.replace(group, f"<mark>{group}</mark>")
-                append = True
+    #      for group in highlighted_groups:
+    #          if group in block:
+    #              block = block.replace(group, f"<mark>{group}</mark>")
+    #              append = True
 
-        if append:
-            # dirty fix for joining consecutive marks
-            block = block.replace("</mark>\n<mark>", " ").replace("</mark> <mark>", " ")
-            out_blocks.append(block)
+    #      if append:
+    #          # dirty fix for joining consecutive marks
+    #          block = block.replace("</mark>\n<mark>", " ").replace("</mark> <mark>", " ")
+    #          out_blocks.append(block)
 
-    # print("out_blocks", out_blocks)
 
-    return "\n\n".join(out_blocks)
+    #  rex = re.compile(r'<mark>(.*?)</mark>', re.S | re.M)
+    #  matches = [rex.findall(ob) for ob in out_blocks]
+    #  print(rex.findall(out_blocks[1]))
+    #  matches = list(chain.from_iterable(matches))
+
+    #  print("\n")
+    #  print("out_blocks")
+    #  for i, ob in enumerate(out_blocks):
+    #      print(f"Block {i}")
+    #      print(ob)
+    #  print("\n")
+    #  print("matches")
+    #  for i, ob in enumerate(matches):
+    #      print(f"Block {i}")
+    #      print(ob)
+    #  print("\n")
+
+    #  print("out_blocks", out_blocks)
+
+    return "\n\n".join(highlighted_groups)

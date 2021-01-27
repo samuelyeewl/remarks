@@ -12,7 +12,7 @@ from .conversion.parsing import (
     get_ann_max_bound,
 )
 from .conversion.drawing import draw_svg, draw_pdf
-from .conversion.text import md_from_blocks, is_text_extractable
+from .conversion.text import extract_highlighted_text, is_text_extractable
 from .conversion.ocrmypdf import is_tool, run_ocr
 
 from .utils import (
@@ -40,6 +40,7 @@ def run_remarks(
     ann_type=None,
     combined_pdf=False,
     modified_pdf=False,
+    combined_md=False
 ):
     for path in pathlib.Path(f"{input_dir}/").glob("*.metadata"):
         if not is_document(path):
@@ -65,6 +66,11 @@ def run_remarks(
 
             pdf_src = fitz.open(path.with_name(f"{path.stem}.pdf"))
 
+            if combined_md:
+                combined_md_str = ""
+                if "md" not in targets:
+                    targets.append("md")
+
             if modified_pdf:
                 mod_pdf = fitz.open()
 
@@ -73,7 +79,10 @@ def run_remarks(
             print(f"PDF in-device directory: {in_device_path}")
 
             for rm_file in rm_files:
-                page_idx = pages.index(f"{rm_file.stem}")
+                #  page_idx = pages.index(f"{rm_file.stem}")
+                # rmapi exports page numbers
+                page_idx = int(f"{rm_file.stem}")
+                #  print("Page {:d}".format(page_idx))
 
                 pdf_w, pdf_h = get_pdf_page_dims(path, page_idx=page_idx)
                 scale = get_pdf_to_device_ratio(pdf_w, pdf_h)
@@ -147,15 +156,19 @@ def run_remarks(
 
                 if "md" in targets:
                     if should_extract_text and (extractable or ocred):
-                        md_str = md_from_blocks(ann_page)
+                        md_str = extract_highlighted_text(ann_page)
                         # TODO: add proper table extraction?
                         # https://pymupdf.readthedocs.io/en/latest/faq.html#how-to-extract-tables-from-documents
 
                         # TODO: maybe also add highlighted image (pixmap) extraction?
 
-                        subdir = prepare_subdir(out_path, "md")
-                        with open(f"{subdir}/{page_idx:0{page_magnitude}}.md", "w") as f:
-                            f.write(md_str)
+                        if combined_md:
+                            combined_md_str += md_str
+                        else:
+                            subdir = prepare_subdir(out_path, "md")
+                            with open(f"{subdir}/{page_idx:0{page_magnitude}}.md", "w") as f:
+                                f.write(md_str)
+
 
                     elif not highlights:
                         print(f"Couldn't find any highlighted text on page #{page_idx}")
@@ -194,6 +207,12 @@ def run_remarks(
             if modified_pdf:
                 mod_pdf.save(f"{output_dir}/{name} _remarks-only.pdf")
                 mod_pdf.close()
+
+            if combined_md:
+                combined_md_str = f"{name}\n=====\n\n" + combined_md_str
+                with open(f"{output_dir}/{name}.md", "w") as f:
+                    f.write(combined_md_str)
+
 
             pdf_src.close()
         else:
