@@ -62,7 +62,10 @@ def get_pdf_page_dims(path, page_idx=0):
 
 def list_pages_uuids(path):
     content = read_meta_file(path, suffix=".content")
-    return content["pages"]
+    if "pages" in content:
+        return content["pages"]
+    else:
+        return []
 
 
 def list_ann_rm_files(path):

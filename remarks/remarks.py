@@ -59,6 +59,7 @@ def run_remarks(
                 continue
 
             if not pages or not name or not rm_files or not len(rm_files):
+                print("No annotations found.")
                 continue
 
             page_magnitude = math.floor(math.log10(len(pages))) + 1
