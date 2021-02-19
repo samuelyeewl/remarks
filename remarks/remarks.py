@@ -217,7 +217,7 @@ def run_remarks(
                 combined_md_strs = sorted(combined_md_strs, key=lambda t:t[0])
                 if md_page_numbers:
                     # Generate subheaders for each page
-                    combined_md_str = ''.join([f"\nPage {s[0]}\n--------\n" + s[1]
+                    combined_md_str = ''.join([f"\nPage {int(s[0])+1}\n--------\n" + s[1]
                                                for s in combined_md_strs])
                     combined_md_str = f"{name}\n========\n" + combined_md_str
                 else:
