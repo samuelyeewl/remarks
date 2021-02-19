@@ -41,7 +41,7 @@ def run_remarks(
     ann_type=None,
     combined_pdf=False,
     modified_pdf=False,
-    assume_wellformed=False
+    assume_wellformed=False,
     combined_md=False,
     md_page_numbers=False
 ):
