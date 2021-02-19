@@ -57,6 +57,18 @@ def main():
         help="Assumes a well-formed PDF where words are in order."
     )
     parser.add_argument(
+        "--combined_md",
+        dest="combined_md",
+        action="store_true",
+        help="Create a single '*.md' file containing all highlighted text",
+    )
+    parser.add_argument(
+        "--md_page_numbers",
+        dest="md_page_numbers",
+        action="store_true",
+        help="Add page number breaks in combined .md"
+    )
+    parser.add_argument(
         "-v",
         "--version",
         action="version",
@@ -68,6 +80,7 @@ def main():
     )
 
     parser.set_defaults(combined_pdf=False, modified_pdf=False,
+                        combined_md=False, md_page_numbers=False,
                         assume_wellformed=False)
 
     args = parser.parse_args()
