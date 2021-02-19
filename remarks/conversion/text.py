@@ -87,7 +87,7 @@ def extract_highlighted_words_nosort(page):
     highlighted_groups = []
     for word, highlighted in zip(words, highlight_mask):
         if highlighted:
-            current_group.append(word[4])
+            current_group.append(word)
             new_group = False
         else:
             if len(current_group) > 0:
@@ -98,9 +98,27 @@ def extract_highlighted_words_nosort(page):
     if len(current_group) > 0:
         highlighted_groups.append(current_group)
 
-    highlighted_groups = ['- ' + ' '.join(g) for g in highlighted_groups]
+    # Convert each group to a single string
+    highlighted_words = []
+    for g in highlighted_groups:
+        g_words = []
+        # Loop over all words but allow look-forward
+        i = 0
+        while i < len(g):
+            # Merge hyphenated words across two lines
+            if g[i][4].endswith('-') \
+                    and g[i][6] == (g[i+1][6] - 1) \
+                    and g[i+1][7] == 0:
+                g_words.append(g[i][4][:-1] + g[i+1][4])
+                i += 1
+            else:
+                g_words.append(g[i][4])
+            i += 1
 
-    return '\n'.join(highlighted_groups)
+        # Add bullet point
+        highlighted_words.append('- ' + ' '.join([w for w in g_words]))
+
+    return '\n'.join(highlighted_words)
 
 
 def extract_highlighted_words(page):
